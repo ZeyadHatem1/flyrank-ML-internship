@@ -41,9 +41,16 @@ cells.append(nbf.v4.new_code_cell(
 cells.append(nbf.v4.new_code_cell(
 """import os, getpass
 
-# CI and power users set HF_TOKEN in the environment; everyone else gets the safe prompt.
 # Never hardcode the token in a cell -- this repo is public.
-HF_TOKEN = os.environ.get("HF_TOKEN") or getpass.getpass("Paste your Hugging Face READ token (hf_...): ")"""))
+# Priority: Colab's Secrets panel (key icon, left sidebar) -> env var (CI) -> getpass prompt (local/other).
+HF_TOKEN = None
+try:
+    from google.colab import userdata
+    HF_TOKEN = userdata.get("HF_TOKEN")
+except Exception:
+    pass
+
+HF_TOKEN = HF_TOKEN or os.environ.get("HF_TOKEN") or getpass.getpass("Paste your Hugging Face READ token (hf_...): ")"""))
 
 cells.append(nbf.v4.new_code_cell(
 """import duckdb
