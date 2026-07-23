@@ -367,7 +367,25 @@ Going into the modeling weeks, the concrete thing I want to test is whether the 
 90 days of features, a next-30-days label, evaluated under a client-holdout split like
 `scripts/03_train_model.py` uses) holds up anywhere near as well as this compressed mid-month
 version suggests — and whether `dim_content`, once I've actually looked at its schema, adds
-enough over pure time-series signal to be worth the join complexity."""))
+enough over pure time-series signal to be worth the join complexity.
+
+**What the real run actually showed, and one mistake I caught before submitting.** GA4 coverage
+came in at 4.2% of March's rows — lower than I expected going in, and a concrete number behind
+the "unbalanced panel, GSC-only early history" warning in the lane guide rather than an abstract
+caveat. The join between the feature window and the forward window also dropped rows from
+319,759 to 151,980 — content items that only have activity in one half of the month fall out of
+the labeled set entirely, which I hadn't thought through until I saw the number; it means my
+151,980-row label set is implicitly filtered toward pages active across the whole month, not a
+clean random slice of March.
+
+The more important catch: my first version of the trap compared the honest model's raw accuracy
+(0.552) directly against the majority-class baseline (0.673) and made the honest features look
+worse than guessing — but the model uses `class_weight="balanced"`, which trades raw accuracy for
+per-class fairness on purpose, so that comparison wasn't apples to apples. Balanced accuracy
+(0.581 honest vs. 0.710 leaky) is the number I should trust, and it's the same accuracy-can-mislead
+lesson `w02` already made me argue for Precision@50 over accuracy — I built a cell that walked
+into the exact trap I already knew about, on data I was less familiar with. Worth remembering
+that "I've made this argument before" doesn't mean I won't repeat the mistake in a new context."""))
 
 nb["cells"] = cells
 nb["metadata"] = {
