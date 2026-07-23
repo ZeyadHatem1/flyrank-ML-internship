@@ -273,15 +273,23 @@ print(trap["is_declining"].value_counts(normalize=True).rename("share"))"""))
 
 cells.append(nbf.v4.new_code_cell(
 """from sklearn.tree import DecisionTreeClassifier, export_text
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 
 honest_features = ["imp_h1", "clicks_h1", "avg_position_h1", "active_days_h1", "ga4_covered_days_h1"]
 X_honest = trap[honest_features].fillna(0)
 y = trap["is_declining"]
 
+majority_baseline = max(y.mean(), 1 - y.mean())
+print(f"Majority-class baseline (always predict the bigger class): {majority_baseline:.3f}")
+print("Using class_weight='balanced' below, so plain accuracy isn't directly comparable to that")
+print("baseline -- balanced accuracy is the fair comparison (see w02's accuracy-vs-imbalance point).\\n")
+
 honest_model = DecisionTreeClassifier(max_depth=3, class_weight="balanced", random_state=42).fit(X_honest, y)
 honest_acc = accuracy_score(y, honest_model.predict(X_honest))
-print(f"Honest quick score (5 features, all from before the decision cutoff): {honest_acc:.3f}")
+honest_bal_acc = balanced_accuracy_score(y, honest_model.predict(X_honest))
+print(f"Honest quick score (5 features, all from before the decision cutoff):")
+print(f"  accuracy:          {honest_acc:.3f}")
+print(f"  balanced accuracy: {honest_bal_acc:.3f}  <- the fair number to trust here")
 
 # Now the trap: add imp_h2 -- the label's own generating column -- as a 6th "feature".
 leaky_features = honest_features + ["imp_h2"]
@@ -289,7 +297,10 @@ X_leaky = trap[leaky_features].fillna(0)
 
 leaky_model = DecisionTreeClassifier(max_depth=3, class_weight="balanced", random_state=42).fit(X_leaky, y)
 leaky_acc = accuracy_score(y, leaky_model.predict(X_leaky))
-print(f"'Leaky' quick score (same 5 features + imp_h2): {leaky_acc:.3f}  <- jumps toward perfect")
+leaky_bal_acc = balanced_accuracy_score(y, leaky_model.predict(X_leaky))
+print(f"\\n'Leaky' quick score (same 5 features + imp_h2):")
+print(f"  accuracy:          {leaky_acc:.3f}")
+print(f"  balanced accuracy: {leaky_bal_acc:.3f}  <- jumps toward perfect either way")
 print()
 print(export_text(leaky_model, feature_names=leaky_features))"""))
 
@@ -304,8 +315,9 @@ Deleting the leak and keeping the honest number:"""))
 cells.append(nbf.v4.new_code_cell(
 """# Delete the leak, keep the honest number.
 del X_leaky, leaky_model
-print(f"Honest quick score, kept: {honest_acc:.3f} (5 features, all knowable by March 15)")
-print(f"Leaky quick score, discarded: {leaky_acc:.3f} (included the label's own generating column)")"""))
+print(f"Honest quick score, kept: balanced accuracy {honest_bal_acc:.3f} (raw accuracy {honest_acc:.3f})")
+print(f"Leaky quick score, discarded: balanced accuracy {leaky_bal_acc:.3f} (raw accuracy {leaky_acc:.3f})")
+print("(included the label's own generating column, imp_h2)")"""))
 
 # ---------------------------------------------------------------------------
 # 4. Limitation
